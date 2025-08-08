@@ -74,7 +74,7 @@ namespace ChatOverlay
 
 		private void Authorization(object sender, RoutedEventArgs e)
 		{
-			if (AuthorizationButton.Background == Brushes.Gray)
+			if (Service != null)
 			{
 				ClearAuthorizeAPI();
 			}
