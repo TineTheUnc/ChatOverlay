@@ -13,6 +13,7 @@ using System.Windows.Shapes;
 using MessageBox = System.Windows.MessageBox;
 using Path = System.IO.Path;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace ChatOverlay
 {
@@ -73,20 +74,21 @@ namespace ChatOverlay
 
 		private void Authorization(object sender, RoutedEventArgs e)
 		{
-			ClearAuthorizeAPI();
-			if ((string)AuthorizationButton.Content == "Authorization")
+			if (AuthorizationButton.Background == Brushes.Gray)
 			{
-				if (File.Exists(this.client_secretPath))
-				{
-					Stream steam = File.Open(this.client_secretPath, FileMode.Open, FileAccess.Read);
-					AuthorizationAPI(steam);
-					AuthorizationButton.Background = new SolidColorBrush(Colors.Gray);
-				}
-				else
-				{
-					MessageBox.Show("Need file client_secret.json in " + this.client_secretPath + " folder.");
-				}
+				ClearAuthorizeAPI();
 			}
+			if (File.Exists(this.client_secretPath))
+			{
+				Stream steam = File.Open(this.client_secretPath, FileMode.Open, FileAccess.Read);
+				AuthorizationAPI(steam);
+				AuthorizationButton.Background = new SolidColorBrush(Colors.Gray);
+			}
+			else
+			{
+				MessageBox.Show("Need file client_secret.json in " + this.client_secretPath + " folder.");
+			}
+			
 		}
 
 		public static async void ClearAuthorizeAPI()
