@@ -1,0 +1,19 @@
+﻿<Window x:Class="ChatOverlay.Chat"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ChatOverlay"
+        Title="ChatOverlay"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        SizeToContent="Height">
+
+	<StackPanel x:Name="ChatPanel"
+                Margin="10"
+                Orientation="Vertical"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left" />
+</Window>
