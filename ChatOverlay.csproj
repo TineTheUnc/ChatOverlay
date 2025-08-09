@@ -14,10 +14,15 @@
     <ItemGroup>
       <None Remove="Assets\stream_list.proto" />        
     </ItemGroup>
-	
-
+	<PropertyGroup>
+		<StartupObject>ChatOverlay.App</StartupObject>
+	</PropertyGroup>
+	<ItemGroup>
+		<ApplicationDefinition Remove="App.xaml" />
+		<Page Include="App.xaml" />
+	</ItemGroup>
     <ItemGroup>
-	  <Protobuf  Include="Assets\stream_list.proto" GrpcServices="Client" />  
+	  <Protobuf Include="Assets\stream_list.proto" GrpcServices="Client" />  
         <Content Include="Assets\youtube.ico">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
@@ -31,6 +36,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
 <PackageReference Include="Google.Apis.YouTube.v3" Version="1.70.0.3847" />
+<PackageReference Include="Velopack" Version="0.0.1298" />
             </ItemGroup>
 
     <ItemGroup>

@@ -1,9 +1,14 @@
 ﻿
+using Microsoft.VisualBasic.Logging;
+using System;
 using System.IO;
 using System.Net.Http;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Velopack;
+using MessageBox = System.Windows.MessageBox;
 
 namespace ChatOverlay
 {
@@ -14,12 +19,39 @@ namespace ChatOverlay
 	{
 		public AutoExpireImageCache ImageCache { get; }
 
+		public static MemoryLogger Log { get; private set; } = new();
+
+		public static readonly string myAppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ChatOverlat");
 		public App()
 		{
-			// กำหนด expiration 10 นาที, cleanup ทุก 5 นาที
 			ImageCache = new AutoExpireImageCache(TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(5));
 		}
 
+		[STAThread]
+		private static void Main(string[] args)
+		{
+			try
+			{
+				VelopackApp.Build()
+					.OnFirstRun((v) => { Directory.CreateDirectory(myAppFolder); })
+					.SetLogger(Log)
+					.Run();
+
+				var app = new App();
+				app.InitializeComponent();
+				app.Run();
+
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show("Unhandled exception: " + ex.ToString());
+			}
+		}
+
+		protected override void OnStartup(StartupEventArgs e)
+		{
+			base.OnStartup(e);
+		}
 	}
 
 	public class AutoExpireImageCache

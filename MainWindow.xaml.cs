@@ -3,22 +3,27 @@ using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using Google.Apis.YouTube.v3;
 using Google.Apis.YouTube.v3.Data;
+using Grpc.Core;
+using Grpc.Net.Client;
+using GrpcYoutube;
+using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using System;
 using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using MessageBox = System.Windows.MessageBox;
-using Path = System.IO.Path;
-using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using Velopack;
+using Velopack.Logging;
+using Velopack.Sources;
 using Brushes = System.Windows.Media.Brushes;
-using Grpc.Net.Client;
-using GrpcYoutube;
 using LiveChatMessage = GrpcYoutube.LiveChatMessage;
-using Grpc.Core;
-using System.Threading.Tasks;
+using MessageBox = System.Windows.MessageBox;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using Path = System.IO.Path;
 
 namespace ChatOverlay
 {
@@ -36,12 +41,22 @@ namespace ChatOverlay
 		public HashSet<string> chat = [];
 		public string PageToken;
 		public string client_secretPath;
-		readonly string myAppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ChatOverlat");
-
+		
+		private UpdateManager _um;
+		private UpdateInfo _update;
 		public MainWindow()
         {
             InitializeComponent();
-			Directory.CreateDirectory(myAppFolder);
+			var source = new GithubSource(
+					repoUrl: "https://github.com/TineTheUnc/ChatOverlay", 
+					accessToken: null,
+					false
+				);
+			_um = new UpdateManager(source);
+
+			TextLog.Text = App.Log.ToString();
+			App.Log.LogUpdated += LogUpdated;
+			UpdateStatus();
 			Loaded += OnLoaded;
 		}
 
@@ -49,16 +64,107 @@ namespace ChatOverlay
 		{
 			var overlay = new Chat(data);
 			overlay.Show();
-			if (File.Exists(Path.Combine(myAppFolder, "client_secret.json")))
+			if (File.Exists(Path.Combine(App.myAppFolder, "client_secret.json")))
 			{
 				ImportButton.Background = new SolidColorBrush(Colors.Gray);
 				ImportButton.IsEnabled = false;
-				client_secretPath = Path.Combine(myAppFolder, "client_secret.json");
+				client_secretPath = Path.Combine(App.myAppFolder, "client_secret.json");
 			}
 			else {
 				ImportButton.Background = new SolidColorBrush(Colors.ForestGreen);
 				ImportButton.IsEnabled = true;
 			}
+		}
+
+		private async void BtnCheckUpdateClick(object sender, RoutedEventArgs e)
+		{
+			Working();
+			try
+			{
+				// ConfigureAwait(true) so that UpdateStatus() is called on the UI thread
+				_update = await _um.CheckForUpdatesAsync().ConfigureAwait(true);
+			}
+			catch (Exception ex)
+			{
+				App.Log.LogError(ex, "Error checking for updates");
+			}
+			UpdateStatus();
+		}
+
+		private async void BtnDownloadUpdateClick(object sender, RoutedEventArgs e)
+		{
+			Working();
+			try
+			{
+				// ConfigureAwait(true) so that UpdateStatus() is called on the UI thread
+				await _um.DownloadUpdatesAsync(_update, Progress).ConfigureAwait(true);
+			}
+			catch (Exception ex)
+			{
+				App.Log.LogError(ex, "Error downloading updates");
+			}
+			UpdateStatus();
+		}
+
+		private void BtnRestartApplyClick(object sender, RoutedEventArgs e)
+		{
+			_um.ApplyUpdatesAndRestart(_update);
+		}
+
+		private void LogUpdated(object sender, LogUpdatedEventArgs e)
+		{
+			// logs can be sent from other threads
+			this.Dispatcher.InvokeAsync(() => {
+				TextLog.Text = e.Text;
+				ScrollLog.ScrollToEnd();
+			});
+		}
+
+		private void Progress(int percent)
+		{
+			// progress can be sent from other threads
+			this.Dispatcher.InvokeAsync(() => {
+				TextStatus.Text = $"Downloading ({percent}%)...";
+			});
+		}
+
+		private void Working()
+		{
+			App.Log.LogInformation("");
+			BtnCheckUpdate.IsEnabled = false;
+			BtnDownloadUpdate.IsEnabled = false;
+			BtnRestartApply.IsEnabled = false;
+			TextStatus.Text = "Working...";
+		}
+
+		private void UpdateStatus()
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.AppendLine($"Velopack version: {VelopackRuntimeInfo.VelopackNugetVersion}");
+			sb.AppendLine($"This app version: {(_um.IsInstalled ? _um.CurrentVersion : "(n/a - not installed)")}");
+
+			if (_update != null)
+			{
+				sb.AppendLine($"Update available: {_update.TargetFullRelease.Version}");
+				BtnDownloadUpdate.IsEnabled = true;
+			}
+			else
+			{
+				BtnDownloadUpdate.IsEnabled = false;
+			}
+
+			if (_um.UpdatePendingRestart != null)
+			{
+				sb.AppendLine("Update ready, pending restart to install");
+				BtnRestartApply.IsEnabled = true;
+			}
+			else
+			{
+				BtnRestartApply.IsEnabled = false;
+			}
+
+			TextStatus.Text = sb.ToString();
+			BtnCheckUpdate.IsEnabled = true;
 		}
 
 		private void Import_File(object sender, RoutedEventArgs e)
@@ -72,8 +178,8 @@ namespace ChatOverlay
 			if (dialog.ShowDialog() == true)
 			{
 				// เขียนข้อมูลลงไฟล์
-				File.Copy(dialog.FileName, Path.Combine(myAppFolder, "client_secret.json"), true);
-				client_secretPath = Path.Combine(myAppFolder, "client_secret.json");
+				File.Copy(dialog.FileName, Path.Combine(App.myAppFolder, "client_secret.json"), true);
+				client_secretPath = Path.Combine(App.myAppFolder, "client_secret.json");
 				ImportButton.Background = new SolidColorBrush(Colors.Gray);
 				ImportButton.IsEnabled = false;
 			}
