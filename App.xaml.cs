@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Velopack;
 using MessageBox = System.Windows.MessageBox;
+using Velopack.Locators;
 
 namespace ChatOverlay
 {
@@ -21,7 +22,7 @@ namespace ChatOverlay
 
 		public static MemoryLogger Log { get; private set; } = new();
 
-		public static readonly string myAppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ChatOverlat");
+		public static string myAppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ChatOverlat");
 		public App()
 		{
 			ImageCache = new AutoExpireImageCache(TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(5));
@@ -33,7 +34,12 @@ namespace ChatOverlay
 			try
 			{
 				VelopackApp.Build()
-					.OnFirstRun((v) => { Directory.CreateDirectory(myAppFolder); })
+					.OnFirstRun((v) => {
+						if (VelopackLocator.IsCurrentSet) {
+							myAppFolder = Path.Combine(VelopackLocator.Current.AppContentDir, "ChatOverlat");
+						}
+						Directory.CreateDirectory(myAppFolder);
+					})
 					.SetLogger(Log)
 					.Run();
 

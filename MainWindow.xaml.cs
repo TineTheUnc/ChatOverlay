@@ -41,7 +41,7 @@ namespace ChatOverlay
 		public HashSet<string> chat = [];
 		public string PageToken;
 		public string client_secretPath;
-		
+		private bool logging = false;
 		private UpdateManager _um;
 		private UpdateInfo _update;
 		public MainWindow()
@@ -73,6 +73,35 @@ namespace ChatOverlay
 			else {
 				ImportButton.Background = new SolidColorBrush(Colors.ForestGreen);
 				ImportButton.IsEnabled = true;
+			}
+		}
+
+		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			App.Log.LogUpdated -= LogUpdated;
+			Stop();
+		}
+
+		private void ToggleLog(object sender, RoutedEventArgs e)
+		{
+			if (ScrollLog.Visibility == Visibility.Visible)
+			{
+				logging = false;
+				this.Dispatcher.InvokeAsync(() => {
+					LogButton.Content = "Show Log";
+					ScrollLog.Visibility = Visibility.Collapsed;
+				});
+			}
+			else {
+				logging = true;
+				this.Dispatcher.InvokeAsync(() => {
+					if (TextLog.Text != string.Empty)
+					{
+						LogButton.Content = "Hide Log";
+						ScrollLog.Visibility = Visibility.Visible;
+						ScrollLog.ScrollToEnd();
+					}
+				});
 			}
 		}
 
@@ -113,11 +142,15 @@ namespace ChatOverlay
 
 		private void LogUpdated(object sender, LogUpdatedEventArgs e)
 		{
-			// logs can be sent from other threads
-			this.Dispatcher.InvokeAsync(() => {
-				TextLog.Text = e.Text;
-				ScrollLog.ScrollToEnd();
-			});
+			if (logging)
+			{
+				this.Dispatcher.InvokeAsync(() => {
+					TextLog.Visibility = Visibility.Visible;
+					ScrollLog.Visibility = Visibility.Visible;
+					TextLog.Text = e.Text;
+					ScrollLog.ScrollToEnd();
+				});
+			}
 		}
 
 		private void Progress(int percent)
