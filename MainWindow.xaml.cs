@@ -14,6 +14,11 @@ using MessageBox = System.Windows.MessageBox;
 using Path = System.IO.Path;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using Brushes = System.Windows.Media.Brushes;
+using Grpc.Net.Client;
+using GrpcYoutube;
+using LiveChatMessage = GrpcYoutube.LiveChatMessage;
+using Grpc.Core;
+using System.Threading.Tasks;
 
 namespace ChatOverlay
 {
@@ -24,7 +29,9 @@ namespace ChatOverlay
     {
 		private bool start = false;
 		List<LiveChatMessage> data = [];
+		private V3DataLiveChatMessageService.V3DataLiveChatMessageServiceClient Connection;
 		private YouTubeService Service;
+		private ChannelBase grpcChannel;
 		private LiveBroadcast live;
 		public HashSet<string> chat = [];
 		public string PageToken;
@@ -105,6 +112,18 @@ namespace ChatOverlay
 						[YouTubeService.Scope.YoutubeReadonly],
 						"user", CancellationToken.None, new FileDataStore("YouTubeLiveChat.Chat")
 						);
+			grpcChannel = GrpcChannel.ForAddress("dns:///youtube.googleapis.com:443", new GrpcChannelOptions
+			{
+				Credentials = ChannelCredentials.Create(new SslCredentials(), CallCredentials.FromInterceptor((context, metadata) =>
+				{
+					metadata.Add("Authorization", "Bearer " + credential.Token.AccessToken);
+					metadata.Add("x-goog-api-client", "gl-dotnet/9.0 ChatOverlay/2.0");
+					metadata.Add("User-Agent", "ChatOverlay/2.0");
+					return Task.CompletedTask;
+				}))
+			});
+
+			Connection = new V3DataLiveChatMessageService.V3DataLiveChatMessageServiceClient(grpcChannel);
 			Service = new(new BaseClientService.Initializer
 			{
 				HttpClientInitializer = credential,
@@ -163,8 +182,10 @@ namespace ChatOverlay
 			
 		}
 
-		public void Stop() {
+		public async void Stop() {
 			start = false;
+			Connection = null;
+			await grpcChannel?.ShutdownAsync();
 			live = null;
 			data = [];
 			chat = [];
@@ -176,27 +197,44 @@ namespace ChatOverlay
 		{
 			while (start)
 			{
-				var Chat = Service.LiveChatMessages.List(live.Snippet.LiveChatId, "snippet,authorDetails");
-				Chat.MaxResults = 50;
+				var request = new LiveChatMessageListRequest
+				{
+					LiveChatId = live.Snippet.LiveChatId
+				};
+				request.Part.Add("snippet");
+				request.Part.Add("authorDetails");
+				request.MaxResults = 50;
 				if (PageToken != null)
 				{
-					Chat.PageToken = PageToken;
+					request.PageToken = PageToken;
 				}
-				var Chatresponse = await Chat.ExecuteAsync();
+				using var call = Connection.StreamList(request);
 				List<LiveChatMessage> data = [];
-				PageToken = Chatresponse.NextPageToken;
-				foreach (var item in Chatresponse.Items)
+				await foreach (var response in call.ResponseStream.ReadAllAsync())
 				{
-					if (!chat.Contains(item.ETag))
+					PageToken = response.NextPageToken;
+					foreach (var message in response.Items)
 					{
-						data.Add(item);
-
+						if (!chat.Contains(message.Id))
+						{
+							chat.Add(message.Id);
+							data.Add(message);
+						}
 					}
-					chat.Add(item.ETag);
+
+					if (!string.IsNullOrEmpty(response.OfflineAt))
+					{
+						Stop();
+						break;
+					}
+					else {
+					}
 				}
-				var chatOverlay = new Chat(data);
-				chatOverlay.Show();
-				await Task.Delay(10000); 
+				if (data.Count > 0) {
+					var chatOverlay = new Chat(data);
+					chatOverlay.Show();
+				}
+				await Task.Delay(10000);
 			}
 		}
 	}

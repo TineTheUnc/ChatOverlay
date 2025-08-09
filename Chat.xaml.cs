@@ -19,6 +19,8 @@ using Screen = System.Windows.Forms.Screen;
 using MessageBox = System.Windows.MessageBox;
 using Point = System.Windows.Point;
 using Application = System.Windows.Application;
+using LiveChatMessage = GrpcYoutube.LiveChatMessage;
+using mType = GrpcYoutube.LiveChatMessageSnippet.Types.TypeWrapper.Types.Type;
 namespace ChatOverlay
 {
 	public partial class Chat : Window
@@ -98,11 +100,11 @@ namespace ChatOverlay
 				{
 					colors = Brushes.Yellow;
 				}
-				if (message.Snippet.Type == "superChatEvent")
+				if (message.Snippet.Type == mType.SuperChatEvent)
 				{
 					line.Parts.Add(new InlinePart { Text = $" [Super Chat] ", Color = colors });
 				}
-				if (message.Snippet.Type == "superStickerEvent")
+				if (message.Snippet.Type == mType.SuperStickerEvent)
 				{
 					line.Parts.Add(new InlinePart { Text = $" [Super Sticker] ", Color = colors });
 				}
