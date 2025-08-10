@@ -10,6 +10,7 @@ using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using System;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -44,6 +45,7 @@ namespace ChatOverlay
 		private bool logging = false;
 		private UpdateManager _um;
 		private UpdateInfo _update;
+		private UserCredential credential;
 		public MainWindow()
         {
             InitializeComponent();
@@ -245,23 +247,23 @@ namespace ChatOverlay
 
 		public async void AuthorizationAPI(Stream client_secrets)
 		{
-			UserCredential credential;
 			credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
 						GoogleClientSecrets.FromStream(client_secrets).Secrets,
 						[YouTubeService.Scope.YoutubeReadonly],
 						"user", CancellationToken.None, new FileDataStore("YouTubeLiveChat.Chat")
 						);
+			var token = await credential.GetAccessTokenForRequestAsync();
 			grpcChannel = GrpcChannel.ForAddress("dns:///youtube.googleapis.com:443", new GrpcChannelOptions
 			{
-				Credentials = ChannelCredentials.Create(new SslCredentials(), CallCredentials.FromInterceptor((context, metadata) =>
+				Credentials = ChannelCredentials.Create(new SslCredentials(), CallCredentials.FromInterceptor( (context, metadata) =>
 				{
-					metadata.Add("Authorization", "Bearer " + credential.Token.AccessToken);
+					
+					metadata.Add("Authorization", "Bearer " + token);
 					metadata.Add("x-goog-api-client", "gl-dotnet/9.0 ChatOverlay/2.0");
 					metadata.Add("User-Agent", "ChatOverlay/2.0");
 					return Task.CompletedTask;
 				}))
 			});
-
 			Connection = new V3DataLiveChatMessageService.V3DataLiveChatMessageServiceClient(grpcChannel);
 			Service = new(new BaseClientService.Initializer
 			{
@@ -323,8 +325,8 @@ namespace ChatOverlay
 
 		public async void Stop() {
 			start = false;
-			Connection = null;
 			await grpcChannel?.ShutdownAsync();
+			Connection = null;
 			live = null;
 			data = [];
 			chat = [];
@@ -347,7 +349,15 @@ namespace ChatOverlay
 				{
 					request.PageToken = PageToken;
 				}
-				using var call = Connection.StreamList(request);
+				var token = await credential.GetAccessTokenForRequestAsync();
+				var metadata = new Metadata
+				{
+					{ "x-goog-api-client", "gl-dotnet/9.0 ChatOverlay/2.0" },
+					{ "User-Agent", "ChatOverlay/2.0" },
+					{ "Authorization", "Bearer " + token}
+
+				};
+				using var call = Connection.StreamList(request, metadata);
 				List<LiveChatMessage> data = [];
 				await foreach (var response in call.ResponseStream.ReadAllAsync())
 				{
