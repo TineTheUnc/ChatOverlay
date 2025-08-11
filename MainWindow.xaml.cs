@@ -62,10 +62,8 @@ namespace ChatOverlay
 			Loaded += OnLoaded;
 		}
 
-		private void OnLoaded(object sender, RoutedEventArgs e)
+		private async void OnLoaded(object sender, RoutedEventArgs e)
 		{
-			var overlay = new Chat(data);
-			overlay.Show();
 			if (File.Exists(Path.Combine(App.myAppFolder, "client_secret.json")))
 			{
 				ImportButton.Background = new SolidColorBrush(Colors.Gray);
@@ -76,6 +74,18 @@ namespace ChatOverlay
 				ImportButton.Background = new SolidColorBrush(Colors.ForestGreen);
 				ImportButton.IsEnabled = true;
 			}
+
+			Working();
+			try
+			{
+				// ConfigureAwait(true) so that UpdateStatus() is called on the UI thread
+				_update = await _um.CheckForUpdatesAsync().ConfigureAwait(true);
+			}
+			catch (Exception ex)
+			{
+				App.Log.LogError(ex, "Error checking for updates");
+			}
+			UpdateStatus();
 		}
 
 		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -107,22 +117,8 @@ namespace ChatOverlay
 			}
 		}
 
-		private async void BtnCheckUpdateClick(object sender, RoutedEventArgs e)
-		{
-			Working();
-			try
-			{
-				// ConfigureAwait(true) so that UpdateStatus() is called on the UI thread
-				_update = await _um.CheckForUpdatesAsync().ConfigureAwait(true);
-			}
-			catch (Exception ex)
-			{
-				App.Log.LogError(ex, "Error checking for updates");
-			}
-			UpdateStatus();
-		}
 
-		private async void BtnDownloadUpdateClick(object sender, RoutedEventArgs e)
+		private async void BtnUpdateClick(object sender, RoutedEventArgs e)
 		{
 			Working();
 			try
@@ -135,13 +131,8 @@ namespace ChatOverlay
 				App.Log.LogError(ex, "Error downloading updates");
 			}
 			UpdateStatus();
-		}
-
-		private void BtnRestartApplyClick(object sender, RoutedEventArgs e)
-		{
 			_um.ApplyUpdatesAndRestart(_update);
 		}
-
 		private void LogUpdated(object sender, LogUpdatedEventArgs e)
 		{
 			if (logging)
@@ -166,9 +157,7 @@ namespace ChatOverlay
 		private void Working()
 		{
 			App.Log.LogInformation("");
-			BtnCheckUpdate.IsEnabled = false;
-			BtnDownloadUpdate.IsEnabled = false;
-			BtnRestartApply.IsEnabled = false;
+			BtnUpdate.IsEnabled = false;
 			TextStatus.Text = "Working...";
 		}
 
@@ -181,25 +170,14 @@ namespace ChatOverlay
 			if (_update != null)
 			{
 				sb.AppendLine($"Update available: {_update.TargetFullRelease.Version}");
-				BtnDownloadUpdate.IsEnabled = true;
+				BtnUpdate.IsEnabled = true;
 			}
 			else
 			{
-				BtnDownloadUpdate.IsEnabled = false;
-			}
-
-			if (_um.UpdatePendingRestart != null)
-			{
-				sb.AppendLine("Update ready, pending restart to install");
-				BtnRestartApply.IsEnabled = true;
-			}
-			else
-			{
-				BtnRestartApply.IsEnabled = false;
+				BtnUpdate.IsEnabled = false;
 			}
 
 			TextStatus.Text = sb.ToString();
-			BtnCheckUpdate.IsEnabled = true;
 		}
 
 		private void Import_File(object sender, RoutedEventArgs e)

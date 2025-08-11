@@ -27,11 +27,7 @@
 			</Grid.RowDefinitions>
 			<StackPanel>
 				<TextBlock Margin="10" Name="TextStatus" />
-				<StackPanel Orientation="Horizontal" Margin="10">
-					<Button Name="BtnCheckUpdate" Content="Check for Updates" Click="BtnCheckUpdateClick" Padding="10,5" />
-					<Button Margin="10,0" Name="BtnDownloadUpdate" Content="Download" Click="BtnDownloadUpdateClick" Padding="10,5" IsEnabled="False" />
-					<Button Name="BtnRestartApply" Content="Restart &amp; Apply" Click="BtnRestartApplyClick" Padding="10,5" IsEnabled="False" />
-				</StackPanel>
+				<Button Name="BtnUpdate" Content="Update" Click="BtnUpdateClick" Padding="10,5" IsEnabled="False" />
 				<ScrollViewer Name="ScrollLog" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
 					<Border  BorderBrush="Gray" BorderThickness="1" Padding="1"  >
 						<TextBlock Name="TextLog" Background="Black" Foreground="White" TextWrapping="Wrap" Padding="5" />
