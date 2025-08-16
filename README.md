@@ -10,7 +10,7 @@
 - ดึงข้อความสดจาก YouTube Live ผ่าน **YouTube Data API v3**  
 - แสดงผล **Super Chat / Super Sticker** พร้อมสีตาม tier  
 - แสดง **avatar** ของผู้ส่ง และ highlight พิเศษสำหรับ **moderator, sponsor, owner**  
-- รองรับ emoji และ custom emoji  
+- รองรับ emoji และ custom emoji (ไม่รองรับ emoji สำหรับ member และ emoji ใหม่)
 - Overlay แบบ **transparent** (กดผ่านได้ ไม่รบกวนหน้าต่างอื่น)  
 - ข้อความใหม่จะถูกแสดงด้านล่าง ข้อความเก่าจะเลื่อนขึ้น  
 - Overlay จะ **ล่องหนอัตโนมัติ** หากไม่มีข้อความใหม่ภายในเวลาที่กำหนด  
