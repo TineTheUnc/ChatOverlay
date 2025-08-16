@@ -46,6 +46,7 @@ namespace ChatOverlay
 		private UpdateManager _um;
 		private UpdateInfo _update;
 		private UserCredential credential;
+		private Chat chatOverlay;
 		public MainWindow()
         {
             InitializeComponent();
@@ -58,6 +59,8 @@ namespace ChatOverlay
 
 			TextLog.Text = App.Log.ToString();
 			App.Log.LogUpdated += LogUpdated;
+			chatOverlay = new();
+			chatOverlay.Show();
 			UpdateStatus();
 			Loaded += OnLoaded;
 		}
@@ -358,8 +361,7 @@ namespace ChatOverlay
 					}
 				}
 				if (data.Count > 0) {
-					var chatOverlay = new Chat(data);
-					chatOverlay.Show();
+					await chatOverlay.AddMessages(data);
 				}
 				await Task.Delay(10000);
 			}

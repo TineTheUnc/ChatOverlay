@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -11,40 +13,55 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using Application = System.Windows.Application;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
 using Image = System.Windows.Controls.Image;
-using Screen = System.Windows.Forms.Screen;
-using MessageBox = System.Windows.MessageBox;
-using Point = System.Windows.Point;
-using Application = System.Windows.Application;
 using LiveChatMessage = GrpcYoutube.LiveChatMessage;
+using MessageBox = System.Windows.MessageBox;
 using mType = GrpcYoutube.LiveChatMessageSnippet.Types.TypeWrapper.Types.Type;
+using Point = System.Windows.Point;
+using Screen = System.Windows.Forms.Screen;
 namespace ChatOverlay
 {
+
+
 	public partial class Chat : Window
 	{
 		public List<RichLine> Lines { get; } = [];
 		List<LiveChatMessage> data = [];
+		[GeneratedRegex(@":[A-Za-z0-9_-]+:" 
+		+ @"|(?:"                                     
+		+ @"(?:[\uD800-\uDBFF][\uDC00-\uDFFF])"     
+		+ @"(?:\uFE0F|\uFE0E)?"                      
+		+ @"(?:\u200D(?:[\uD800-\uDBFF][\uDC00-\uDFFF])(?:\uFE0F|\uFE0E)?)*" 
+		+ @")"
+		+ @"|(?:[\u2600-\u27BF]\uFE0F?)", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+		private static partial Regex MyRegex();
+		private System.Windows.Threading.DispatcherTimer hideTimer;
+		private TimeSpan hideAfter = TimeSpan.FromSeconds(10); 
 
-
-		public Chat(List<LiveChatMessage> data)
+		public Chat()
 		{
 			InitializeComponent();
-			this.data = data;
+			hideTimer = new System.Windows.Threading.DispatcherTimer
+			{
+				Interval = hideAfter
+			};
+			hideTimer.Tick += HideTimer_Tick;
 			Loaded += OnLoaded;
 		}
 
-		private async void AutoCloseWindow(int milliseconds)
+		private void HideTimer_Tick(object sender, EventArgs e)
 		{
-			await Task.Delay(milliseconds);
-			this.Close();
+			hideTimer.Stop();
+			this.Visibility = Visibility.Hidden;
 		}
 
-		private void OnLoaded(object sender, RoutedEventArgs e)
+
+		public async Task AddMessages(List<LiveChatMessage> data)
 		{
-			MakeClickThrough();
 			foreach (var message in data)
 			{
 				var line = new RichLine();
@@ -93,7 +110,8 @@ namespace ChatOverlay
 				{
 					colors = Brushes.Green;
 				}
-				if ((bool)message.AuthorDetails.IsChatModerator) {
+				if ((bool)message.AuthorDetails.IsChatModerator)
+				{
 					colors = Brushes.Blue;
 				}
 				if ((bool)message.AuthorDetails.IsChatOwner)
@@ -102,7 +120,7 @@ namespace ChatOverlay
 				}
 				if (message.Snippet.Type == mType.SuperChatEvent)
 				{
-					line.Parts.Add(new InlinePart { Text = $" [Super Chat] ", Color = colors });
+					line.Parts.Add(new InlinePart { Text = $"[Super Chat] ", Color = colors });
 				}
 				if (message.Snippet.Type == mType.SuperStickerEvent)
 				{
@@ -111,50 +129,115 @@ namespace ChatOverlay
 				if (!string.IsNullOrEmpty(message.AuthorDetails.ProfileImageUrl))
 				{
 
-					line.Parts.Add(new InlinePart {Text = message.AuthorDetails.DisplayName, Color = colors, ImageUrl = message.AuthorDetails.ProfileImageUrl });
+					line.Parts.Add(new InlinePart { Text = message.AuthorDetails.DisplayName, Color = colors, ImageUrl = message.AuthorDetails.ProfileImageUrl });
 				}
 				if (!string.IsNullOrEmpty(message.Snippet.DisplayMessage))
 				{
 					line.Parts.Add(new InlinePart { Text = " : ", Color = Brushes.White });
-					line.Parts.Add(new InlinePart { Text = message.Snippet.DisplayMessage, Color = Brushes.White });
+					var m = message.Snippet.DisplayMessage;
+					var matches = MyRegex().Matches(m);
+					var result = new List<string>();
+
+					int lastIndex = 0;
+
+					foreach (Match match in matches)
+					{
+						// ข้อความก่อน emoji
+						if (match.Index > lastIndex)
+						{
+							result.Add(m[lastIndex..match.Index]);
+						}
+
+						// Emoji / shortcode
+						string token = match.Value;
+						if (token.StartsWith(':') && token.EndsWith(':'))
+							token = token.Substring(1, token.Length - 2);
+
+						result.Add(token);
+
+						lastIndex = match.Index + match.Length;
+					}
+
+					if (lastIndex < m.Length)
+						result.Add(m[lastIndex..]);
+					var app = (App)Application.Current;
+					foreach (var part in result)
+					{
+						var emoji = await app.EmojiLoader.GetEmoji(part);
+						if (emoji != null)
+						{
+							line.Parts.Add(new InlinePart { Image = emoji });
+						}
+						else
+						{
+							line.Parts.Add(new InlinePart { Text = part, Color = Brushes.White });
+						}
+					}
 				}
 				line.Color = Bgcolors;
-				Lines.Add(line);
+				
+				AppendLine(line);
 			}
-
-			RenderLines();
-			Dispatcher.InvokeAsync(PositionToBottomLeft, System.Windows.Threading.DispatcherPriority.Render);
-			AutoCloseWindow(10000);
 		}
 
-		private void RenderLines()
+		private async void OnLoaded(object sender, RoutedEventArgs e)
 		{
-			ChatPanel.Children.Clear();
+			MakeClickThrough();
+			await Dispatcher.InvokeAsync(PositionToBottomLeft, System.Windows.Threading.DispatcherPriority.Render);
+		}
 
-			foreach (var line in Lines)
+
+		public async void AppendLine(RichLine line)
+		{
+			Lines.Add(line);
+
+			int maxLines = 10;
+			while (Lines.Count > maxLines)
 			{
-				var border = new Border
-				{
-					Background = new SolidColorBrush(Color.FromArgb(102, 0, 0, 0)), // #66000000 (โปร่งแสงดำ)
-					Padding = new Thickness(4),
-					CornerRadius = new CornerRadius(4),
-					Margin = new Thickness(2)
-				};
+				Lines.RemoveAt(0);
+				if (ChatPanel.Children.Count > 0)
+					ChatPanel.Children.RemoveAt(0);
+			}
 
-				var textBlock = new TextBlock { FontSize = 26, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White };
+			var border = new Border
+			{
+				Background = new SolidColorBrush(Color.FromArgb(102, 0, 0, 0)), 
+				Padding = new Thickness(4),
+				CornerRadius = new CornerRadius(4),
+				Margin = new Thickness(2)
+			};
+			var screen = Screen.PrimaryScreen;
+			var workingArea = screen.WorkingArea;
+			var textBlock = new TextBlock { FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White, MaxWidth = workingArea.Width * 3 / 8 };
 
-				RenderPartsAsync(line.Parts, textBlock);
+			RenderPartsAsync(line.Parts, textBlock);
 
-				textBlock.Effect = new DropShadowEffect
-				{
-					Color = line.Color,
-					BlurRadius = 3,
-					ShadowDepth = 1,
-					Opacity = 0.8
-				};
+			textBlock.Effect = new DropShadowEffect
+			{
+				Color = line.Color,
+				BlurRadius = 3,
+				ShadowDepth = 1,
+				Opacity = 0.8
+			};
 
-				border.Child = textBlock;
-				ChatPanel.Children.Add(border);
+			border.Child = textBlock;
+
+			ChatPanel.Children.Add(border);
+			if (this.Visibility != Visibility.Visible)
+				this.Visibility = Visibility.Visible;
+
+			hideTimer.Stop();
+			hideTimer.Start();
+			AnimateScroll();
+			ChatPanel.UpdateLayout();
+			await Dispatcher.InvokeAsync(PositionToBottomLeft, System.Windows.Threading.DispatcherPriority.Render);
+		}
+
+		private void AnimateScroll()
+		{
+			if (ChatPanel.Parent is ScrollViewer scrollViewer)
+			{
+				scrollViewer.ScrollToBottom();
 			}
 		}
 
@@ -175,6 +258,19 @@ namespace ChatOverlay
 				{
 					textBlock.Inlines.Add(new Run(part.Text) { Foreground = part.Color ?? Brushes.LightGray });
 				}
+
+				if (part.Image != null) {
+					var image = new Image
+					{
+						Source = part.Image,
+						Width = 20,
+						Height = 20,
+						Margin = new Thickness(0, 0, 0, 0),
+						VerticalAlignment = VerticalAlignment.Center
+					};
+
+					textBlock.Inlines.Add(new InlineUIContainer(image) { BaselineAlignment = BaselineAlignment.Center });
+				}
 			}
 		}
 
@@ -189,10 +285,10 @@ namespace ChatOverlay
 				var image = new Image
 				{
 					Source = imageSource,
-					Width = 30,
-					Height = 30,
+					Width = 20,
+					Height = 20,
 					Margin = new Thickness(0, 0, 5, 0),
-					Clip = new EllipseGeometry(new Point(15, 15), 15, 15),
+					Clip = new EllipseGeometry(new Point(10, 10), 10, 10),
 					VerticalAlignment = VerticalAlignment.Center
 				};
 
@@ -226,6 +322,7 @@ namespace ChatOverlay
 
 		[DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 		[DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
 	}
 
 	public class RichLine
@@ -239,5 +336,7 @@ namespace ChatOverlay
 		public string Text { get; set; }
 		public Brush Color { get; set; }
 		public string ImageUrl { get; set; }
+
+		public ImageSource Image { get; set; }
 	}
 }

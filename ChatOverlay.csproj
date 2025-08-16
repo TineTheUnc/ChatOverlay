@@ -12,6 +12,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Remove="Assets\Emoji\data.json" />
       <None Remove="Assets\stream_list.proto" />        
     </ItemGroup>
 	<PropertyGroup>
@@ -22,14 +23,17 @@
 		<Page Include="App.xaml" />
 	</ItemGroup>
     <ItemGroup>
-	  <Protobuf Include="Assets\stream_list.proto" GrpcServices="Client" />  
+	  <Protobuf Include="Assets\stream_list.proto" GrpcServices="Client" />
+	  <Content Include="Assets\Emoji\data.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>  
         <Content Include="Assets\youtube.ico">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 
     <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.31.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.32.0" />
             <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="Grpc.Tools" Version="2.72.0">
       <PrivateAssets>all</PrivateAssets>
@@ -50,8 +54,8 @@
         <Company>Tine</Company>
         <Product>ChatOverlay</Product>
         <Description>A live overlay chat application with API.</Description>
-        <Version>2.2.0</Version>
-        <FileVersion>2.2.0</FileVersion>
+        <Version>3.0.0</Version>
+        <FileVersion>3.0.0</FileVersion>
         <ApplicationIcon>Assets\youtube.ico</ApplicationIcon>
     </PropertyGroup>
 

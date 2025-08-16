@@ -1,15 +1,15 @@
-﻿
-using Microsoft.VisualBasic.Logging;
+﻿using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Security.Policy;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Velopack;
-using MessageBox = System.Windows.MessageBox;
 using Velopack.Locators;
+using MessageBox = System.Windows.MessageBox;
 
 namespace ChatOverlay
 {
@@ -19,13 +19,16 @@ namespace ChatOverlay
     public partial class App : System.Windows.Application
 	{
 		public AutoExpireImageCache ImageCache { get; }
+		public EmojiLoader EmojiLoader { get; } = new();
 
 		public static MemoryLogger Log { get; private set; } = new();
 
-		public static string myAppFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ChatOverlat");
+		public static string myAppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+		public static string AssetsFolder = Path.Combine(myAppFolder, "Assets");
 		public App()
 		{
 			ImageCache = new AutoExpireImageCache(TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(5));
+			EmojiLoader = new();
 		}
 
 		[STAThread]
@@ -36,9 +39,9 @@ namespace ChatOverlay
 				VelopackApp.Build()
 					.OnFirstRun((v) => {
 						if (VelopackLocator.IsCurrentSet) {
-							myAppFolder = Path.Combine(VelopackLocator.Current.AppContentDir, "ChatOverlat");
+							myAppFolder = VelopackLocator.Current.AppContentDir;
 						}
-						Directory.CreateDirectory(myAppFolder);
+						Directory.CreateDirectory(AssetsFolder);
 					})
 					.SetLogger(Log)
 					.Run();
@@ -57,6 +60,54 @@ namespace ChatOverlay
 		protected override void OnStartup(StartupEventArgs e)
 		{
 			base.OnStartup(e);
+		}
+	}
+
+	public class EmojiLoader
+	{
+		public static string EmojiFolder = Path.Combine(App.AssetsFolder, "Emoji");
+		public Dictionary<string, string> Emojis = [];
+		private Dictionary<string, ImageSource> EmojiCache = [];
+		public EmojiLoader(){
+			Directory.CreateDirectory(EmojiFolder);
+			if (!File.Exists(Path.Combine(EmojiFolder,"data.json")))
+			{
+				File.Create(Path.Combine(EmojiFolder, "data.json"));
+			}
+			string jsonString = File.ReadAllText(Path.Combine(EmojiFolder, "data.json"));
+
+
+			Emojis = JsonConvert.DeserializeObject<Dictionary<string, string>>(jsonString);
+			Emojis ??= [];
+		}
+
+		public async Task<ImageSource> GetEmoji(string name)
+		{
+			if (EmojiCache.TryGetValue(name, out var image))
+			{
+				return image;
+			}
+
+			if (Emojis.TryGetValue(name, out var url))
+			{
+				using var httpClient = new HttpClient();
+				var imageBytes = await httpClient.GetByteArrayAsync(url);
+
+				var bitmap = new BitmapImage();
+				using var stream = new MemoryStream(imageBytes);
+
+				bitmap.BeginInit();
+				bitmap.CacheOption = BitmapCacheOption.OnLoad;
+				bitmap.StreamSource = stream;
+				bitmap.EndInit();
+				bitmap.Freeze();
+
+				EmojiCache[url] = bitmap;
+				return bitmap;
+			}
+			else { 
+				return null;
+			}
 		}
 	}
 
