@@ -53,7 +53,9 @@ Clone the repository:
 git clone https://github.com/TineTheUnc/ChatOverlay.git
 cd ChatOverlay
 ```
+
 Build with Visual Studio 2022 (WPF project, .NET 6+).
+
 ---
 
 ## 📜 License
