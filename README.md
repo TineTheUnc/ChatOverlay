@@ -1,84 +1,61 @@
 # ChatOverlay
 
-**ChatOverlay** เป็นแอป WPF สำหรับแสดงข้อความจาก **YouTube Live Chat** แบบ overlay บนหน้าจอ  
-สามารถใช้ได้กับการสตรีม โดยไม่บังการทำงานของแอปอื่น และยังรองรับการแสดงผล Super Chat, Super Sticker และ emoji
+A lightweight WPF-based overlay for displaying YouTube Live Chat messages directly on screen.  
+Designed to stay on top of other windows, auto-hide when inactive, and support simple text wrapping.  
+
+⚠️ Limitations:  
+- Does **not** support YouTube sponsor-only emoji.  
+- Some newer emoji may not render properly.  
+- Windows only.
 
 ---
 
-## ✨ ฟีเจอร์
+## Features
 
-- ดึงข้อความสดจาก YouTube Live ผ่าน **YouTube Data API v3**  
-- แสดงผล **Super Chat / Super Sticker** พร้อมสีตาม tier  
-- แสดง **avatar** ของผู้ส่ง และ highlight พิเศษสำหรับ **moderator, sponsor, owner**  
-- รองรับ emoji และ custom emoji (ไม่รองรับ emoji สำหรับ member และ emoji ใหม่)
-- Overlay แบบ **transparent** (กดผ่านได้ ไม่รบกวนหน้าต่างอื่น)  
-- ข้อความใหม่จะถูกแสดงด้านล่าง ข้อความเก่าจะเลื่อนขึ้น  
-- Overlay จะ **ล่องหนอัตโนมัติ** หากไม่มีข้อความใหม่ภายในเวลาที่กำหนด  
-- ใช้ **Velopack** จัดการ assets (เช่น emoji, icons, config)
+- Transparent always-on-top chat overlay.  
+- Messages push older ones upward automatically.  
+- Auto-hide after inactivity.  
+- Word-wrapping with configurable width.  
+- Easy deployment using **Velopack**.  
 
 ---
 
-## 📦 การติดตั้ง
+## Installation
 
-1. **Clone โปรเจกต์**
+Download from the [Releases](https://github.com/TineTheUnc/ChatOverlay/releases) page.  
+We provide two Windows-only options:  
+
+1. **Setup Installer (recommended)**  
+   - Automatically installs and updates via Velopack.  
+   - Adds shortcuts to Start Menu.  
+
+2. **Portable Version**  
+   - Extract and run `ChatOverlay.exe`.  
+   - No installation required.  
+
+---
+
+## Usage
+
+1. Import your `client_secret.json`.  
+2. Authorize your YouTube account.  
+3. Enter the **Live Chat ID** of your stream.  
+4. Press **Start** to begin fetching messages.  
+5. The overlay will show messages on screen, auto-hiding when inactive.  
+
+---
+
+## Development
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/TineTheUnc/ChatOverlay.git
 cd ChatOverlay
 ```
-
-2. **ติดตั้ง dependencies**
-
-- .NET 7.0 (หรือใหม่กว่า ที่รองรับ WPF)
-- Google.Apis.YouTube.v3
-- Grpc.Net.Client
-- Velopack
-
-3. **สร้างไฟล์ `client_secret.json`** จาก Google Cloud Console  
-   - ดาวน์โหลด OAuth2 client ID  
-   - วางไว้ในโฟลเดอร์โปรเจกต์ หรือใช้ปุ่ม **Import client_secret** ในโปรแกรม  
-
----
-
-## ▶️ วิธีใช้งาน
-
-1. เปิดโปรแกรม `ChatOverlay.exe`  
-2. กด **Import client_secret** เพื่อโหลดไฟล์ `client_secret.json`  
-3. กด **Authorization** เพื่อเชื่อมบัญชี YouTube  
-4. กรอก **Live ID** ของสตรีมในช่อง input  
-5. กด **Start** เพื่อเริ่มดึงข้อความแชท  
-6. หน้าต่าง Overlay จะปรากฏบนจอโดยอัตโนมัติ  
-
-> ข้อความเก่าจะเลื่อนขึ้น ข้อความใหม่จะอยู่ด้านล่าง  
-> หากไม่มีข้อความใหม่ในเวลาที่กำหนด Overlay จะค่อย ๆ หายไป  
-
----
-
-## 📂 โครงสร้างไฟล์
-
-```
-ChatOverlay/
-├─ ChatOverlay.csproj
-├─ MainWindow.xaml        # UI หลัก
-├─ MainWindow.xaml.cs     # โค้ดหลัก
-├─ Chat.xaml              # Overlay UI
-├─ Chat.xaml.cs           # โค้ดแสดง overlay
-├─ Assets/                # เก็บ emoji, icon, asset อื่น ๆ
-├─ App.xaml
-├─ App.xaml.cs
-```
-
----
-
-## ⚙️ การปรับแต่ง
-
-- **ขนาด Overlay** → ปรับ `MaxWidth` ใน `Chat.xaml.cs`  
-- **เวลา Overlay ล่องหน** → ปรับค่าที่ `AutoCloseWindow(milliseconds)`  
-- **สี Super Chat / Super Sticker** → แก้ไขได้ใน `Chat.xaml.cs`  
-
+Build with Visual Studio 2022 (WPF project, .NET 6+).
 ---
 
 ## 📜 License
 
-Distributed under the **MIT License**.  
-ดูรายละเอียดได้ในไฟล์ [LICENSE](LICENSE)
+MIT License. See [LICENSE](LICENSE) for details.
